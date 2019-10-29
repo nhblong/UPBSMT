@@ -51,7 +51,6 @@ def load_txt_embeddings(params, source, full_vocab):
     dico = Dictionary(id2word, word2id, lang)
     embeddings = np.concatenate(vectors, 0)
     embeddings = torch.from_numpy(embeddings).float()
-    embeddings = embeddings.cuda() if (params.cuda and not full_vocab) else embeddings
 
     assert embeddings.size() == (len(dico), params.emb_dim)
     return dico, embeddings
