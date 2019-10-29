@@ -38,18 +38,8 @@ def load_txt_embeddings(params, source, full_vocab):
                 vect = np.fromstring(vect, sep=' ')
                 if np.linalg.norm(vect) == 0:  # avoid to have null embeddings
                     vect[0] = 0.01
-                if word in word2id:
-                    if full_vocab:
-                        print("Word '%s' found twice in %s embedding file"
-                                       % (word, 'source' if source else 'target'))
-                else:
-                    if not vect.shape == (_emb_dim_file,):
-                        print("Invalid dimension (%i) for %s word '%s' in line %i."
-                                       % (vect.shape[0], 'source' if source else 'target', word, i))
-                        continue
-                    assert vect.shape == (_emb_dim_file,), i
-                    word2id[word] = len(word2id)
-                    vectors.append(vect[None])
+                word2id[word] = len(word2id)
+                vectors.append(vect[None])
             if params.max_vocab > 0 and len(word2id) >= params.max_vocab and not full_vocab:
                 break
 
