@@ -33,8 +33,6 @@ def load_txt_embeddings(params, source, full_vocab):
                 assert len(split) == 2
             else:
                 word, vect = line.rstrip().split(' ', 1)
-                if not full_vocab:
-                    word = word.lower()
                 vect = np.fromstring(vect, sep=' ')
                 if np.linalg.norm(vect) == 0:  # avoid to have null embeddings
                     vect[0] = 0.01
@@ -98,7 +96,7 @@ def load_embeddings(params, source):
     if emb_path.endswith('.bin'):
         dico, emb = load_bin_embeddings(params, source)
     if emb_path.endswith('.vec'):
-        dico, emd = load_txt_embeddings(params, source, False)
+        dico, emb = load_txt_embeddings(params, source, False)
     if params.max_vocab > 0:
         dico.prune(params.max_vocab)
         emb = emb[:params.max_vocab]
