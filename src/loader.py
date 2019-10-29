@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import io
 
 from .dictionary import Dictionary
 
@@ -15,6 +16,57 @@ def load_fasttext_model(path):
                         "https://github.com/facebookresearch/fastText")
     return fasttext.load_model(path)
 
+def load_txt_embeddings(params, source, full_vocab):
+    """
+    Reload pretrained embeddings from a text file.
+    """
+    word2id = {}
+    vectors = []
+
+    # load pretrained embeddings
+    lang = params.src_lang if source else params.tgt_lang
+    emb_path = params.src_emb if source else params.tgt_emb
+    _emb_dim_file = params.emb_dim
+    with io.open(emb_path, 'r', encoding='utf-8', newline='\n', errors='ignore') as f:
+        for i, line in enumerate(f):
+            if i == 0:
+                split = line.split()
+                assert len(split) == 2
+                assert _emb_dim_file == int(split[1])
+            else:
+                word, vect = line.rstrip().split(' ', 1)
+                if not full_vocab:
+                    word = word.lower()
+                vect = np.fromstring(vect, sep=' ')
+                if np.linalg.norm(vect) == 0:  # avoid to have null embeddings
+                    vect[0] = 0.01
+                if word in word2id:
+                    if full_vocab:
+                        print("Word '%s' found twice in %s embedding file"
+                                       % (word, 'source' if source else 'target'))
+                else:
+                    if not vect.shape == (_emb_dim_file,):
+                        print("Invalid dimension (%i) for %s word '%s' in line %i."
+                                       % (vect.shape[0], 'source' if source else 'target', word, i))
+                        continue
+                    assert vect.shape == (_emb_dim_file,), i
+                    word2id[word] = len(word2id)
+                    vectors.append(vect[None])
+            if params.max_vocab > 0 and len(word2id) >= params.max_vocab and not full_vocab:
+                break
+
+    assert len(word2id) == len(vectors)
+    print("Loaded %i pre-trained word embeddings." % len(vectors))
+
+    # compute new vocabulary / embeddings
+    id2word = {v: k for k, v in word2id.items()}
+    dico = Dictionary(id2word, word2id, lang)
+    embeddings = np.concatenate(vectors, 0)
+    embeddings = torch.from_numpy(embeddings).float()
+    embeddings = embeddings.cuda() if (params.cuda and not full_vocab) else embeddings
+
+    assert embeddings.size() == (len(dico), params.emb_dim)
+    return dico, embeddings
 
 def load_pth_embeddings(params, source):
     """
@@ -59,6 +111,8 @@ def load_embeddings(params, source):
         dico, emb = load_pth_embeddings(params, source)
     if emb_path.endswith('.bin'):
         dico, emb = load_bin_embeddings(params, source)
+    if emb_path.endswith('.vec'):
+        dico, emd = load_txt_embeddings(params, source, False)
     if params.max_vocab > 0:
         dico.prune(params.max_vocab)
         emb = emb[:params.max_vocab]
