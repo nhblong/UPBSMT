@@ -52,7 +52,6 @@ def load_txt_embeddings(params, source, full_vocab):
     embeddings = np.concatenate(vectors, 0)
     embeddings = torch.from_numpy(embeddings).float()
 
-    assert embeddings.size() == (len(dico), params.emb_dim)
     return dico, embeddings
 
 def load_pth_embeddings(params, source):
